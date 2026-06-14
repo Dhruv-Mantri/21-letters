@@ -4,7 +4,7 @@ import { motion, Variants } from "framer-motion";
 
 interface Wish {
   id: string;
-  contributor_name: string;
+  contributor: string;
   letter: string;
   image_url: string;
 }
@@ -79,7 +79,7 @@ export default function WishGrid({ wishes }: WishGridProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={wish.image_url}
-                  alt={`Photo from ${wish.contributor_name}`}
+                  alt={`Photo from ${wish.contributor}`}
                   className="w-full h-full object-cover select-none pointer-events-none"
                   style={{
                     filter: "sepia(10%) contrast(95%) brightness(102%)",
@@ -109,7 +109,7 @@ export default function WishGrid({ wishes }: WishGridProps) {
                     From
                   </span>
                   <span className="font-medium text-stone-800 text-sm tracking-wide">
-                    — {wish.contributor_name}
+                    — {wish.contributor}
                   </span>
                 </div>
               </div>

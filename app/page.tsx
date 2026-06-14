@@ -17,7 +17,7 @@ interface TimeLeft {
 
 interface Wish {
   id: string;
-  contributor_name: string;
+  contributor: string;
   letter: string;
   image_url: string;
 }
@@ -131,6 +131,18 @@ export default function BirthdayPage() {
   // Countdown timer
   useEffect(() => {
     setHasMounted(true);
+
+    // Dev/Preview bypass via query parameter (?bypass=true or ?unlock=true or ?preview=true)
+    const params = new URLSearchParams(window.location.search);
+    const hasBypassParam =
+      params.get("bypass") === "true" ||
+      params.get("unlock") === "true" ||
+      params.get("preview") === "true";
+
+    if (hasBypassParam) {
+      setIsUnlocked(true);
+      return;
+    }
 
     const calculateTimeLeft = (): TimeLeft | null => {
       const difference = +BIRTHDAY_TARGET - +new Date();

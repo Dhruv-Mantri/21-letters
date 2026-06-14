@@ -92,7 +92,7 @@ export default function ContributePage() {
       // 4. Insert into database
       const { error: dbError } = await supabase.from("wishes").insert([
         {
-          contributor_name: name,
+          contributor: name,
           letter: letter,
           image_url: publicUrl,
         },
