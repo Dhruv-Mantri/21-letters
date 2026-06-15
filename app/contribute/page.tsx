@@ -167,11 +167,11 @@ export default function ContributePage() {
             transition={{ delay: 0.2 }}
             className="text-2xl font-bold text-stone-900"
           >
-            Write a Birthday Note{" "}
+            Write a Birthday Note for Chinmayi{" "}
             <span className="inline-block animate-float">✨</span>
           </motion.h1>
           <p className="text-sm text-stone-500 mt-2 leading-relaxed">
-            Leave a sweet memory, heartfelt letter, and a favorite picture.
+            Leave a heartfelt letter and a picture of you with her, for her to unlock on her birthday.
           </p>
         </header>
 
@@ -196,7 +196,7 @@ export default function ContributePage() {
               htmlFor="contribute-name"
               className="block text-sm font-medium text-stone-700 mb-1.5"
             >
-              Your Name / Relationship
+              Your Name
             </label>
             <input
               id="contribute-name"
@@ -204,7 +204,7 @@ export default function ContributePage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder='e.g., Sarah (College Roommate) or Mom'
+              placeholder='e.g., Aria, Mom. Optionally list your title (e.g. First Girlfriend, Second Girlfriend, Ex-Girlfriend, etc)'
               className="w-full px-4 py-2.5 border border-stone-200 rounded-xl
                 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400
                 text-stone-800 text-sm placeholder:text-stone-300
