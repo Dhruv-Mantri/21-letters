@@ -204,7 +204,7 @@ export default function ContributePage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder='e.g., Aria, Mom. Optionally list your title (e.g. First Girlfriend, Second Girlfriend, Ex-Girlfriend, etc)'
+              placeholder='e.g., Aria, Mom, Ex-Girlfriend'
               className="w-full px-4 py-2.5 border border-stone-200 rounded-xl
                 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400
                 text-stone-800 text-sm placeholder:text-stone-300
