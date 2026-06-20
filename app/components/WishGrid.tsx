@@ -8,6 +8,7 @@ interface Wish {
   contributor: string;
   letter: string;
   image_url: string;
+  letter_image_url?: string | null;
 }
 
 interface WishGridProps {
@@ -43,6 +44,7 @@ const cardVariants: Variants = {
 
 export default function WishGrid({ wishes }: WishGridProps) {
   const [selectedWish, setSelectedWish] = useState<Wish | null>(null);
+  const [activeTab, setActiveTab] = useState<"memory" | "letter">("memory");
 
   return (
     <>
@@ -70,7 +72,10 @@ export default function WishGrid({ wishes }: WishGridProps) {
                   scale: 1.05,
                   transition: { duration: 0.35, ease: "easeOut" },
                 }}
-                onClick={() => setSelectedWish(wish)}
+                onClick={() => {
+                  setSelectedWish(wish);
+                  setActiveTab("memory");
+                }}
                 className="group relative w-full max-w-[340px] h-[240px] cursor-pointer rounded-lg z-0"
               >
                 {/* 1. THE EMBEDDED PEEKING LETTER (Pulls out on hover) */}
@@ -170,28 +175,101 @@ export default function WishGrid({ wishes }: WishGridProps) {
 
               {/* Scrollable Document Container */}
               <div className="flex-1 overflow-y-auto polaroid-scrollbar bg-[#fdfbf7] flex flex-col">
-                {/* Component 1: Image (Top of Scroll) */}
-                <div className="relative w-full bg-stone-100/30 border-b border-stone-100 overflow-hidden flex items-center justify-center flex-shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selectedWish.image_url}
-                    alt={`Memory with ${selectedWish.contributor}`}
-                    className="w-full h-auto object-contain select-none pointer-events-none block"
-                    style={{
-                      filter: "sepia(8%) contrast(98%) brightness(102%)",
-                    }}
-                  />
-                  {/* Vintage overlays */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/[0.12] pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
-                </div>
+                {selectedWish.letter_image_url ? (
+                  /* Image Carousel/Flip View for image-based letters */
+                  <div className="relative w-full aspect-[4/3] bg-stone-100 overflow-hidden flex flex-col justify-between border-b border-stone-200 flex-shrink-0">
+                    <div className="flex-1 w-full h-full relative overflow-hidden flex items-center justify-center">
+                      <AnimatePresence mode="wait">
+                        {activeTab === "memory" ? (
+                          <motion.img
+                            key="memory"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.25 }}
+                            src={selectedWish.image_url}
+                            alt={`Memory with ${selectedWish.contributor}`}
+                            className="absolute inset-0 w-full h-full object-contain p-4 select-none"
+                            style={{
+                              filter: "sepia(8%) contrast(98%) brightness(102%)",
+                            }}
+                          />
+                        ) : (
+                          <motion.img
+                            key="letter"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.25 }}
+                            src={selectedWish.letter_image_url}
+                            alt={`Handwritten letter from ${selectedWish.contributor}`}
+                            className="absolute inset-0 w-full h-full object-contain p-4 select-none"
+                            style={{
+                              filter: "sepia(5%) contrast(98%) brightness(102%)",
+                            }}
+                          />
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Toggle Buttons overlay */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-stone-900/60 hover:bg-stone-900/80 transition-colors backdrop-blur-md px-3 py-1.5 rounded-full shadow-md z-30">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("memory")}
+                        className={`text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200 ${
+                          activeTab === "memory"
+                            ? "bg-white text-stone-900 shadow-sm"
+                            : "text-stone-300 hover:text-white"
+                        }`}
+                      >
+                        📸 Memory Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("letter")}
+                        className={`text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200 ${
+                          activeTab === "letter"
+                            ? "bg-white text-stone-900 shadow-sm"
+                            : "text-stone-300 hover:text-white"
+                        }`}
+                      >
+                        ✉️ Letter Image
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Standard Single Memory Photo for text-based letters */
+                  <div className="relative w-full bg-stone-100/30 border-b border-stone-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedWish.image_url}
+                      alt={`Memory with ${selectedWish.contributor}`}
+                      className="w-full h-auto object-contain select-none pointer-events-none block"
+                      style={{
+                        filter: "sepia(8%) contrast(98%) brightness(102%)",
+                      }}
+                    />
+                    {/* Vintage overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/[0.12] pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                )}
 
                 {/* Component 2: Letter content (Bottom of Scroll) */}
                 <div className="p-6 md:p-8 space-y-6">
                   <div className="space-y-4">
-                    <p className="polaroid-handwriting text-stone-800 text-left tracking-wide leading-relaxed selection:bg-amber-100/60 whitespace-pre-wrap text-2xl md:text-3xl">
-                      &ldquo;{selectedWish.letter}&rdquo;
-                    </p>
+                    {selectedWish.letter_image_url ? (
+                      <div className="text-center py-4 space-y-2">
+                        <p className="text-sm font-serif italic text-stone-500">
+                          This letter was uploaded as an image. Use the buttons above to switch views.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="polaroid-handwriting text-stone-800 text-left tracking-wide leading-relaxed selection:bg-amber-100/60 whitespace-pre-wrap text-2xl md:text-3xl">
+                        &ldquo;{selectedWish.letter}&rdquo;
+                      </p>
+                    )}
                   </div>
 
                   {/* Signature Block */}

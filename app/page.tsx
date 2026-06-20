@@ -20,6 +20,7 @@ interface Wish {
   contributor: string;
   letter: string;
   image_url: string;
+  letter_image_url?: string | null;
 }
 
 /* ─── Ambient floating particles for the countdown ─── */

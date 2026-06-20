@@ -10,6 +10,12 @@ export default function ContributePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Letter image state
+  const [letterType, setLetterType] = useState<"text" | "image">("text");
+  const [letterImageFile, setLetterImageFile] = useState<File | null>(null);
+  const [letterImagePreview, setLetterImagePreview] = useState<string | null>(null);
+  const [isDraggingLetter, setIsDraggingLetter] = useState(false);
+
   // Status states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -58,10 +64,59 @@ export default function ContributePage() {
     }
   };
 
+  // Letter image handlers
+  const processLetterFile = useCallback((file: File) => {
+    setError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file for the letter.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Letter image size must be less than 5MB.");
+      return;
+    }
+
+    setLetterImageFile(file);
+    setLetterImagePreview(URL.createObjectURL(file));
+  }, []);
+
+  const handleLetterImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processLetterFile(e.target.files[0]);
+    }
+  };
+
+  const handleLetterDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    setIsDraggingLetter(true);
+  };
+
+  const handleLetterDragLeave = (e: DragEvent) => {
+    e.preventDefault();
+    setIsDraggingLetter(false);
+  };
+
+  const handleLetterDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setIsDraggingLetter(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processLetterFile(e.dataTransfer.files[0]);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name || !letter || !imageFile) {
-      setError("Please fill out all fields and upload a photo.");
+    if (!name || !imageFile) {
+      setError("Please fill out your name and upload a photo.");
+      return;
+    }
+    if (letterType === "text" && !letter) {
+      setError("Please write your birthday message.");
+      return;
+    }
+    if (letterType === "image" && !letterImageFile) {
+      setError("Please upload your letter image.");
       return;
     }
 
@@ -74,7 +129,7 @@ export default function ContributePage() {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
       const filePath = `uploads/${fileName}`;
 
-      // 2. Upload to Supabase Storage
+      // 2. Upload to Supabase Storage (memory photo)
       const { error: uploadError } = await supabase.storage
         .from("birthday-photos")
         .upload(filePath, imageFile, {
@@ -82,19 +137,43 @@ export default function ContributePage() {
           upsert: false,
         });
 
-      if (uploadError) throw new Error(`Image upload failed: ${uploadError.message}`);
+      if (uploadError) throw new Error(`Memory photo upload failed: ${uploadError.message}`);
 
       // 3. Get public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("birthday-photos").getPublicUrl(filePath);
 
-      // 4. Insert into database
+      // 4. Upload letter image if applicable
+      let letterPublicUrl = null;
+      if (letterType === "image" && letterImageFile) {
+        const letterFileExt = letterImageFile.name.split(".").pop();
+        const letterFileName = `${Date.now()}-letter-${Math.random().toString(36).substring(2, 9)}.${letterFileExt}`;
+        const letterFilePath = `uploads/${letterFileName}`;
+
+        const { error: letterUploadError } = await supabase.storage
+          .from("letter-pics")
+          .upload(letterFilePath, letterImageFile, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (letterUploadError) throw new Error(`Letter image upload failed: ${letterUploadError.message}`);
+
+        const {
+          data: { publicUrl: fetchedLetterPublicUrl },
+        } = supabase.storage.from("letter-pics").getPublicUrl(letterFilePath);
+        
+        letterPublicUrl = fetchedLetterPublicUrl;
+      }
+
+      // 5. Insert into database
       const { error: dbError } = await supabase.from("wishes").insert([
         {
           contributor: name,
-          letter: letter,
+          letter: letterType === "text" ? letter : "",
           image_url: publicUrl,
+          letter_image_url: letterPublicUrl,
         },
       ]);
 
@@ -171,7 +250,7 @@ export default function ContributePage() {
             <span className="inline-block animate-float">✨</span>
           </motion.h1>
           <p className="text-sm text-stone-500 mt-2 leading-relaxed">
-            Leave a heartfelt letter and a picture of you with her, for her to unlock on her birthday.
+            Leave a heartfelt letter (typed or handwritten image) and a picture of you with her, for her to unlock on her birthday.
           </p>
         </header>
 
@@ -212,27 +291,149 @@ export default function ContributePage() {
             />
           </div>
 
-          {/* Letter/Message Field */}
+          {/* Letter Choice Option Selection */}
           <div>
-            <label
-              htmlFor="contribute-letter"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
-            >
-              Your Birthday Message
+            <label className="block text-sm font-medium text-stone-700 mb-1.5">
+              How would you like to leave your letter?
             </label>
-            <textarea
-              id="contribute-letter"
-              required
-              rows={6}
-              value={letter}
-              onChange={(e) => setLetter(e.target.value)}
-              placeholder="Write your letter or favorite memory here..."
-              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl
-                focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400
-                text-stone-800 text-sm placeholder:text-stone-300 resize-none
-                transition-all duration-200"
-            />
+            <div className="grid grid-cols-2 gap-2 bg-stone-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setLetterType("text")}
+                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  letterType === "text"
+                    ? "bg-white text-amber-700 shadow-sm"
+                    : "text-stone-500 hover:text-stone-700"
+                }`}
+              >
+                ✍️ Write Message
+              </button>
+              <button
+                type="button"
+                onClick={() => setLetterType("image")}
+                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  letterType === "image"
+                    ? "bg-white text-amber-700 shadow-sm"
+                    : "text-stone-500 hover:text-stone-700"
+                }`}
+              >
+                📸 Upload Letter Image
+              </button>
+            </div>
           </div>
+
+          {/* Letter/Message Field */}
+          {letterType === "text" ? (
+            <div>
+              <label
+                htmlFor="contribute-letter"
+                className="block text-sm font-medium text-stone-700 mb-1.5"
+              >
+                Your Birthday Message
+              </label>
+              <textarea
+                id="contribute-letter"
+                required
+                rows={6}
+                value={letter}
+                onChange={(e) => setLetter(e.target.value)}
+                placeholder="Write your letter or favorite memory here..."
+                className="w-full px-4 py-2.5 border border-stone-200 rounded-xl
+                  focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400
+                  text-stone-800 text-sm placeholder:text-stone-300 resize-none
+                  transition-all duration-200"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                Upload Letter Image
+              </label>
+              <div
+                onDragOver={handleLetterDragOver}
+                onDragLeave={handleLetterDragLeave}
+                onDrop={handleLetterDrop}
+                className={`mt-1 flex flex-col items-center justify-center px-6 pt-5 pb-6
+                  border-2 border-dashed rounded-xl transition-all duration-200 relative
+                  ${
+                    isDraggingLetter
+                      ? "border-amber-400 bg-amber-50/50 scale-[1.02]"
+                      : "border-stone-200 hover:border-stone-300"
+                  }`}
+              >
+                <AnimatePresence mode="wait">
+                  {letterImagePreview ? (
+                    <motion.div
+                      key="letter-preview"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="text-center w-full"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={letterImagePreview}
+                        alt="Letter Preview"
+                        className="max-h-44 rounded-lg mb-3 mx-auto shadow-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLetterImageFile(null);
+                          setLetterImagePreview(null);
+                        }}
+                        className="text-xs text-red-400 hover:text-red-500 hover:underline transition-colors"
+                      >
+                        Remove and select another
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="letter-upload"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-2 text-center"
+                    >
+                      <svg
+                        className="mx-auto h-12 w-12 text-stone-300"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4-4m4-24h8m-4-4v8"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-stone-500 justify-center">
+                        <label
+                          htmlFor="letter-file-upload"
+                          className="relative cursor-pointer rounded-md font-medium text-amber-600 hover:text-amber-500 transition-colors"
+                        >
+                          <span>Upload a file</span>
+                          <input
+                            id="letter-file-upload"
+                            name="letter-file-upload"
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={handleLetterImageChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-stone-400">
+                        PNG, JPG, WEBP up to 5MB
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
 
           {/* File Upload with Drag & Drop */}
           <div>
